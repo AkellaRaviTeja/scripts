@@ -127,261 +127,260 @@ function dragElement(elmnt) {
   }
 }
 
- function cssPath = (node, optimized) => {
-    if (node.nodeType !== Node.ELEMENT_NODE) return "";
-    var steps = [];
-    var contextNode = node;
-    while (contextNode) {
-      var step = this._cssPathStep(
-        contextNode,
-        !!optimized,
-        contextNode === node
-      );
-      if (!step) break; // Error - bail out early.
-      steps.push(step);
-      if (step.optimized) break;
-      contextNode = contextNode.parentNode;
-    }
-    steps.reverse();
-    return steps.join(" > ");
-  };
+const cssPath = (node, optimized) => {
+  if (node.nodeType !== Node.ELEMENT_NODE) return "";
+  var steps = [];
+  var contextNode = node;
+  while (contextNode) {
+    var step = this._cssPathStep(
+      contextNode,
+      !!optimized,
+      contextNode === node
+    );
+    if (!step) break; // Error - bail out early.
+    steps.push(step);
+    if (step.optimized) break;
+    contextNode = contextNode.parentNode;
+  }
+  steps.reverse();
+  return steps.join(" > ");
+};
 
-  function _cssPathStep = (node, optimized, isTargetNode) => {
-    if (node.nodeType !== Node.ELEMENT_NODE) return null;
+const _cssPathStep = (node, optimized, isTargetNode) => {
+  if (node.nodeType !== Node.ELEMENT_NODE) return null;
 
-    const id = node.getAttribute("id");
-    if (optimized) {
-      if (id) return new DOMNodePathStep(idSelector(id), true);
-      var nodeNameLower = node.nodeName.toLowerCase();
-      if (
-        nodeNameLower === "body" ||
-        nodeNameLower === "head" ||
-        nodeNameLower === "html"
-      )
-        return new DOMNodePathStep(node.nodeName.toLowerCase(), true);
-    }
-    var nodeName = node.nodeName.toLowerCase();
+  const id = node.getAttribute("id");
+  if (optimized) {
+    if (id) return new DOMNodePathStep(idSelector(id), true);
+    var nodeNameLower = node.nodeName.toLowerCase();
+    if (
+      nodeNameLower === "body" ||
+      nodeNameLower === "head" ||
+      nodeNameLower === "html"
+    )
+      return new DOMNodePathStep(node.nodeName.toLowerCase(), true);
+  }
+  var nodeName = node.nodeName.toLowerCase();
 
-    if (id)
-      return new DOMNodePathStep(nodeName.toLowerCase() + idSelector(id), true);
-    var parent = node.parentNode;
-    if (!parent || parent.nodeType === Node.DOCUMENT_NODE)
-      return new DOMNodePathStep(nodeName.toLowerCase(), true);
+  if (id)
+    return new DOMNodePathStep(nodeName.toLowerCase() + idSelector(id), true);
+  var parent = node.parentNode;
+  if (!parent || parent.nodeType === Node.DOCUMENT_NODE)
+    return new DOMNodePathStep(nodeName.toLowerCase(), true);
 
-    function prefixedElementClassNames(node) {
-      var classAttribute = node.getAttribute("class");
-      if (!classAttribute) return [];
+  function prefixedElementClassNames(node) {
+    var classAttribute = node.getAttribute("class");
+    if (!classAttribute) return [];
 
-      return classAttribute
-        .split(/\s+/g)
-        .filter(Boolean)
-        .map(function (name) {
-          // The prefix is required to store "__proto__" in a object-based map.
-          return "$" + name;
-        });
-    }
-
-    function idSelector(id) {
-      return "#" + escapeIdentifierIfNeeded(id);
-    }
-
-    function escapeIdentifierIfNeeded(ident) {
-      if (isCSSIdentifier(ident)) return ident;
-      var shouldEscapeFirst = /^(?:[0-9]|-[0-9-]?)/.test(ident);
-      var lastIndex = ident.length - 1;
-      return ident.replace(/./g, function (c, i) {
-        return (shouldEscapeFirst && i === 0) || !isCSSIdentChar(c)
-          ? escapeAsciiChar(c, i === lastIndex)
-          : c;
+    return classAttribute
+      .split(/\s+/g)
+      .filter(Boolean)
+      .map(function (name) {
+        // The prefix is required to store "__proto__" in a object-based map.
+        return "$" + name;
       });
+  }
+
+  function idSelector(id) {
+    return "#" + escapeIdentifierIfNeeded(id);
+  }
+
+  function escapeIdentifierIfNeeded(ident) {
+    if (isCSSIdentifier(ident)) return ident;
+    var shouldEscapeFirst = /^(?:[0-9]|-[0-9-]?)/.test(ident);
+    var lastIndex = ident.length - 1;
+    return ident.replace(/./g, function (c, i) {
+      return (shouldEscapeFirst && i === 0) || !isCSSIdentChar(c)
+        ? escapeAsciiChar(c, i === lastIndex)
+        : c;
+    });
+  }
+
+  function escapeAsciiChar(c, isLast) {
+    return "\\" + toHexByte(c) + (isLast ? "" : " ");
+  }
+
+  function toHexByte(c) {
+    var hexByte = c.charCodeAt(0).toString(16);
+    if (hexByte.length === 1) hexByte = "0" + hexByte;
+    return hexByte;
+  }
+
+  function isCSSIdentChar(c) {
+    if (/[a-zA-Z0-9_-]/.test(c)) return true;
+    return c.charCodeAt(0) >= 0xa0;
+  }
+
+  function isCSSIdentifier(value) {
+    return /^-?[a-zA-Z_][a-zA-Z0-9_-]*$/.test(value);
+  }
+
+  var prefixedOwnClassNamesArray = prefixedElementClassNames(node);
+  var needsClassNames = false;
+  var needsNthChild = false;
+  var ownIndex = -1;
+  var elementIndex = -1;
+  var siblings = parent.children;
+  for (
+    var i = 0;
+    (ownIndex === -1 || !needsNthChild) && i < siblings.length;
+    ++i
+  ) {
+    var sibling = siblings[i];
+    if (sibling.nodeType !== Node.ELEMENT_NODE) continue;
+
+    elementIndex += 1;
+    if (sibling === node) {
+      ownIndex = elementIndex;
+      continue;
+    }
+    if (needsNthChild) continue;
+    if (sibling.nodeName.toLowerCase() !== nodeName.toLowerCase()) continue;
+
+    needsClassNames = true;
+    var ownClassNames = new Set(prefixedOwnClassNamesArray);
+    if (!ownClassNames.size) {
+      needsNthChild = true;
+      continue;
     }
 
-    function escapeAsciiChar(c, isLast) {
-      return "\\" + toHexByte(c) + (isLast ? "" : " ");
-    }
-
-    function toHexByte(c) {
-      var hexByte = c.charCodeAt(0).toString(16);
-      if (hexByte.length === 1) hexByte = "0" + hexByte;
-      return hexByte;
-    }
-
-    function isCSSIdentChar(c) {
-      if (/[a-zA-Z0-9_-]/.test(c)) return true;
-      return c.charCodeAt(0) >= 0xa0;
-    }
-
-    function isCSSIdentifier(value) {
-      return /^-?[a-zA-Z_][a-zA-Z0-9_-]*$/.test(value);
-    }
-
-    var prefixedOwnClassNamesArray = prefixedElementClassNames(node);
-    var needsClassNames = false;
-    var needsNthChild = false;
-    var ownIndex = -1;
-    var elementIndex = -1;
-    var siblings = parent.children;
-    for (
-      var i = 0;
-      (ownIndex === -1 || !needsNthChild) && i < siblings.length;
-      ++i
-    ) {
-      var sibling = siblings[i];
-      if (sibling.nodeType !== Node.ELEMENT_NODE) continue;
-
-      elementIndex += 1;
-      if (sibling === node) {
-        ownIndex = elementIndex;
-        continue;
-      }
-      if (needsNthChild) continue;
-      if (sibling.nodeName.toLowerCase() !== nodeName.toLowerCase()) continue;
-
-      needsClassNames = true;
-      var ownClassNames = new Set(prefixedOwnClassNamesArray);
+    var siblingClassNamesArray = prefixedElementClassNames(sibling);
+    for (var j = 0; j < siblingClassNamesArray.length; ++j) {
+      var siblingClass = siblingClassNamesArray[j];
+      if (!ownClassNames.has(siblingClass)) continue;
+      ownClassNames.delete(siblingClass);
       if (!ownClassNames.size) {
         needsNthChild = true;
-        continue;
-      }
-
-      var siblingClassNamesArray = prefixedElementClassNames(sibling);
-      for (var j = 0; j < siblingClassNamesArray.length; ++j) {
-        var siblingClass = siblingClassNamesArray[j];
-        if (!ownClassNames.has(siblingClass)) continue;
-        ownClassNames.delete(siblingClass);
-        if (!ownClassNames.size) {
-          needsNthChild = true;
-          break;
-        }
+        break;
       }
     }
+  }
 
-    var result = nodeName.toLowerCase();
+  var result = nodeName.toLowerCase();
+  if (
+    isTargetNode &&
+    nodeName.toLowerCase() === "input" &&
+    node.getAttribute("type") &&
+    !node.getAttribute("id") &&
+    !node.getAttribute("class")
+  )
+    result += '[type="' + node.getAttribute("type") + '"]';
+  if (needsNthChild) {
+    result += ":nth-child(" + (ownIndex + 1) + ")";
+  } else if (needsClassNames) {
+    for (var prefixedName in prefixedOwnClassNamesArray)
+      result +=
+        "." +
+        escapeIdentifierIfNeeded(
+          prefixedOwnClassNamesArray[prefixedName].substr(1)
+        );
+  }
+
+  return new DOMNodePathStep(result, false);
+};
+
+const xPath = (node, optimized) => {
+  if (node.nodeType === Node.DOCUMENT_NODE) return "/";
+  var steps = [];
+  var contextNode = node;
+  while (contextNode) {
+    var step = this._xPathValue(contextNode, optimized);
+    if (!step) break; // Error - bail out early.
+    steps.push(step);
+    if (step.optimized) break;
+    contextNode = contextNode.parentNode;
+  }
+  steps.reverse();
+  return (steps.length && steps[0].optimized ? "" : "/") + steps.join("/");
+};
+
+const _xPathValue = (node, optimized) => {
+  var ownValue;
+  var ownIndex = this._xPathIndex(node);
+  if (ownIndex === -1) return null; // Error.
+  switch (node.nodeType) {
+    case Node.ELEMENT_NODE:
+      if (optimized && node.getAttribute("id"))
+        return new DOMNodePathStep(
+          '//*[@id="' + node.getAttribute("id") + '"]',
+          true
+        );
+      ownValue = node.localName;
+      break;
+    case Node.ATTRIBUTE_NODE:
+      ownValue = "@" + node.nodeName;
+      break;
+    case Node.TEXT_NODE:
+    case Node.CDATA_SECTION_NODE:
+      ownValue = "text()";
+      break;
+    case Node.PROCESSING_INSTRUCTION_NODE:
+      ownValue = "processing-instruction()";
+      break;
+    case Node.COMMENT_NODE:
+      ownValue = "comment()";
+      break;
+    case Node.DOCUMENT_NODE:
+      ownValue = "";
+      break;
+    default:
+      ownValue = "";
+      break;
+  }
+  if (ownIndex > 0) ownValue += "[" + ownIndex + "]";
+  return new DOMNodePathStep(ownValue, node.nodeType === Node.DOCUMENT_NODE);
+};
+
+const _xPathIndex = (node) => {
+  // Returns -1 in case of error, 0 if no siblings matching the same expression, <XPath index among the same expression-matching sibling nodes> otherwise.
+  function areNodesSimilar(left, right) {
+    if (left === right) return true;
     if (
-      isTargetNode &&
-      nodeName.toLowerCase() === "input" &&
-      node.getAttribute("type") &&
-      !node.getAttribute("id") &&
-      !node.getAttribute("class")
+      left.nodeType === Node.ELEMENT_NODE &&
+      right.nodeType === Node.ELEMENT_NODE
     )
-      result += '[type="' + node.getAttribute("type") + '"]';
-    if (needsNthChild) {
-      result += ":nth-child(" + (ownIndex + 1) + ")";
-    } else if (needsClassNames) {
-      for (var prefixedName in prefixedOwnClassNamesArray)
-        result +=
-          "." +
-          escapeIdentifierIfNeeded(
-            prefixedOwnClassNamesArray[prefixedName].substr(1)
-          );
+      return left.localName === right.localName;
+    if (left.nodeType === right.nodeType) return true;
+    // XPath treats CDATA as text nodes.
+    var leftType =
+      left.nodeType === Node.CDATA_SECTION_NODE
+        ? Node.TEXT_NODE
+        : left.nodeType;
+    var rightType =
+      right.nodeType === Node.CDATA_SECTION_NODE
+        ? Node.TEXT_NODE
+        : right.nodeType;
+    return leftType === rightType;
+  }
+  var siblings = node.parentNode ? node.parentNode.children : null;
+  if (!siblings) return 0; // Root node - no siblings.
+  var hasSameNamedElements;
+  for (var i = 0; i < siblings.length; ++i) {
+    if (areNodesSimilar(node, siblings[i]) && siblings[i] !== node) {
+      hasSameNamedElements = true;
+      break;
     }
-
-    return new DOMNodePathStep(result, false);
-  };
-
-  function xPath = (node, optimized) => {
-    if (node.nodeType === Node.DOCUMENT_NODE) return "/";
-    var steps = [];
-    var contextNode = node;
-    while (contextNode) {
-      var step = this._xPathValue(contextNode, optimized);
-      if (!step) break; // Error - bail out early.
-      steps.push(step);
-      if (step.optimized) break;
-      contextNode = contextNode.parentNode;
+  }
+  if (!hasSameNamedElements) return 0;
+  var ownIndex = 1; // XPath indices start with 1.
+  for (var j = 0; j < siblings.length; ++j) {
+    if (areNodesSimilar(node, siblings[j])) {
+      if (siblings[j] === node) return ownIndex;
+      ++ownIndex;
     }
-    steps.reverse();
-    return (steps.length && steps[0].optimized ? "" : "/") + steps.join("/");
-  };
+  }
+  return -1; // An error occurred: |node| not found in parent's children.
+};
 
-  function _xPathValue = (node, optimized) => {
-    var ownValue;
-    var ownIndex = this._xPathIndex(node);
-    if (ownIndex === -1) return null; // Error.
-    switch (node.nodeType) {
-      case Node.ELEMENT_NODE:
-        if (optimized && node.getAttribute("id"))
-          return new DOMNodePathStep(
-            '//*[@id="' + node.getAttribute("id") + '"]',
-            true
-          );
-        ownValue = node.localName;
-        break;
-      case Node.ATTRIBUTE_NODE:
-        ownValue = "@" + node.nodeName;
-        break;
-      case Node.TEXT_NODE:
-      case Node.CDATA_SECTION_NODE:
-        ownValue = "text()";
-        break;
-      case Node.PROCESSING_INSTRUCTION_NODE:
-        ownValue = "processing-instruction()";
-        break;
-      case Node.COMMENT_NODE:
-        ownValue = "comment()";
-        break;
-      case Node.DOCUMENT_NODE:
-        ownValue = "";
-        break;
-      default:
-        ownValue = "";
-        break;
-    }
-    if (ownIndex > 0) ownValue += "[" + ownIndex + "]";
-    return new DOMNodePathStep(ownValue, node.nodeType === Node.DOCUMENT_NODE);
-  };
-
-  function _xPathIndex = (node) => {
-    // Returns -1 in case of error, 0 if no siblings matching the same expression, <XPath index among the same expression-matching sibling nodes> otherwise.
-    function areNodesSimilar(left, right) {
-      if (left === right) return true;
-      if (
-        left.nodeType === Node.ELEMENT_NODE &&
-        right.nodeType === Node.ELEMENT_NODE
-      )
-        return left.localName === right.localName;
-      if (left.nodeType === right.nodeType) return true;
-      // XPath treats CDATA as text nodes.
-      var leftType =
-        left.nodeType === Node.CDATA_SECTION_NODE
-          ? Node.TEXT_NODE
-          : left.nodeType;
-      var rightType =
-        right.nodeType === Node.CDATA_SECTION_NODE
-          ? Node.TEXT_NODE
-          : right.nodeType;
-      return leftType === rightType;
-    }
-    var siblings = node.parentNode ? node.parentNode.children : null;
-    if (!siblings) return 0; // Root node - no siblings.
-    var hasSameNamedElements;
-    for (var i = 0; i < siblings.length; ++i) {
-      if (areNodesSimilar(node, siblings[i]) && siblings[i] !== node) {
-        hasSameNamedElements = true;
-        break;
-      }
-    }
-    if (!hasSameNamedElements) return 0;
-    var ownIndex = 1; // XPath indices start with 1.
-    for (var j = 0; j < siblings.length; ++j) {
-      if (areNodesSimilar(node, siblings[j])) {
-        if (siblings[j] === node) return ownIndex;
-        ++ownIndex;
-      }
-    }
-    return -1; // An error occurred: |node| not found in parent's children.
-  };
-
-
-function _createDraggableWYSIWYGOverlay = (rtmInstance) => {
+const _createDraggableWYSIWYGOverlay = (rtmInstance) => {
   console.log("Created a WYSIWYG popup");
-    const isAdded =
-      this.testDeviceData !== null &&
-      this.testDeviceData !== undefined &&
-      this.testDeviceData.id &&
-      this.testDeviceData.name;
+  const isAdded =
+    this.testDeviceData !== null &&
+    this.testDeviceData !== undefined &&
+    this.testDeviceData.id &&
+    this.testDeviceData.name;
 
-    const html = `
+  const html = `
         <style>
             .apx-cr{
               display:flex;
@@ -490,14 +489,14 @@ function _createDraggableWYSIWYGOverlay = (rtmInstance) => {
         </div>
     `;
 
-    //Remove the overlay if its already created.
-    const wysiwyg_overlay = document.getElementById("apx-wr");
-    if (wysiwyg_overlay && wysiwyg_overlay.remove) {
-      wysiwyg_overlay.remove();
-    }
+  //Remove the overlay if its already created.
+  const wysiwyg_overlay = document.getElementById("apx-wr");
+  if (wysiwyg_overlay && wysiwyg_overlay.remove) {
+    wysiwyg_overlay.remove();
+  }
 
-    const node = document.createElement("div");
-    node.style = `
+  const node = document.createElement("div");
+  node.style = `
       z-index:99999999;
       position:fixed;
       top:8px;
@@ -508,122 +507,122 @@ function _createDraggableWYSIWYGOverlay = (rtmInstance) => {
       padding:20px;
       border: 5px solid rgba(0, 0, 0, 0.7);
     `;
-    node.setAttribute("id", "apx-wr");
-    node.innerHTML = html;
+  node.setAttribute("id", "apx-wr");
+  node.innerHTML = html;
 
-    document.body.appendChild(node);
-    this._wysiwygRoot = node;
+  document.body.appendChild(node);
+  this._wysiwygRoot = node;
 
-    const buttons = document.getElementById("apx-bh");
+  const buttons = document.getElementById("apx-bh");
 
-    const hide = () => {
-      node.style.opacity = 0.5;
-      buttons.style.display = "none";
-    };
-    let timeoutHandler = setTimeout(hide, 3000);
+  const hide = () => {
+    node.style.opacity = 0.5;
+    buttons.style.display = "none";
+  };
+  let timeoutHandler = setTimeout(hide, 3000);
 
-    // Upon mouseout of this div, show the buttons and reset the opacity back to 1
-    node.addEventListener("mouseover", () => {
-      node.style.opacity = 1;
-      clearTimeout(timeoutHandler);
-      buttons.style.display = "flex";
-    });
+  // Upon mouseout of this div, show the buttons and reset the opacity back to 1
+  node.addEventListener("mouseover", () => {
+    node.style.opacity = 1;
+    clearTimeout(timeoutHandler);
+    buttons.style.display = "flex";
+  });
 
-    // Upon mouseout of this div, hide the buttons and decrease the opacity to 0.5
-    node.addEventListener("mouseout", () => {
-      timeoutHandler = setTimeout(hide, 3000);
-    });
+  // Upon mouseout of this div, hide the buttons and decrease the opacity to 0.5
+  node.addEventListener("mouseout", () => {
+    timeoutHandler = setTimeout(hide, 3000);
+  });
 
-    const addDeviceButton = document.getElementById("apx-a");
-    const removeDeviceButton = document.getElementById("apx-r");
-    const enableViewSelectionButton = document.getElementById("apx-ev");
-    const disableViewSelectionButton = document.getElementById("apx-dv");
+  const addDeviceButton = document.getElementById("apx-a");
+  const removeDeviceButton = document.getElementById("apx-r");
+  const enableViewSelectionButton = document.getElementById("apx-ev");
+  const disableViewSelectionButton = document.getElementById("apx-dv");
 
-    addDeviceButton.onclick = () => this._showAddTestDeviceDialog(rtmInstance);
+  addDeviceButton.onclick = () => this._showAddTestDeviceDialog(rtmInstance);
 
-    removeDeviceButton.onclick = () => {
-      // Make remove API call
-      fetch(
-        REMOVE_TEST_DEVICE_API.replace("<aid>", Apxor.getSiteId()).replace(
-          "<uid>",
-          this.testDeviceData.id
-        ),
-        {
-          method: "DELETE",
-          headers: {
-            apx_web_key: "WTCKFAIVAJKYJA3HCV80WIKZU98R9NJG",
-          },
+  removeDeviceButton.onclick = () => {
+    // Make remove API call
+    fetch(
+      REMOVE_TEST_DEVICE_API.replace("<aid>", Apxor.getSiteId()).replace(
+        "<uid>",
+        this.testDeviceData.id
+      ),
+      {
+        method: "DELETE",
+        headers: {
+          apx_web_key: "WTCKFAIVAJKYJA3HCV80WIKZU98R9NJG",
+        },
+      }
+    )
+      .then((res) => {
+        if (res.ok && res.status === 200) {
+          return res.json();
         }
-      )
-        .then((res) => {
-          if (res.ok && res.status === 200) {
-            return res.json();
+        return null;
+      })
+      .then((data) => {
+        if (data) {
+          Apxor.getController().persistToStorage("_apx_td", {}, true);
+          this.testDeviceData = null;
+
+          addDeviceButton.style.display = "block";
+          removeDeviceButton.style.display =
+            enableViewSelectionButton.style.display =
+            disableViewSelectionButton.style.display =
+              "none";
+
+          if (this.isSelectionMode) {
+            this._hideSelectionMode();
           }
-          return null;
-        })
-        .then((data) => {
-          if (data) {
-            Apxor.getController().persistToStorage("_apx_td", {}, true);
-            this.testDeviceData = null;
+        }
+      })
+      .catch((e) => console.error(e));
+  };
 
-            addDeviceButton.style.display = "block";
-            removeDeviceButton.style.display =
-              enableViewSelectionButton.style.display =
-              disableViewSelectionButton.style.display =
-                "none";
+  /**
+   * Hides this button, Shows the Disable View Selection button and attach some event listeners
+   *
+   * At last, show a toast kind of message at the center of the screen
+   */
+  enableViewSelectionButton.onclick = () => {
+    this.isSelectionMode = true;
 
-            if (this.isSelectionMode) {
-              this._hideSelectionMode();
-            }
-          }
-        })
-        .catch((e) => console.error(e));
-    };
+    // Attach the mouseover and mouseout listeners
+    window.addEventListener("mouseover", onMouseOver, true);
+    window.addEventListener("mouseout", onMouseOut, true);
+    this.clickListener = (e) =>
+      handleDocumentOnClick(e, (target) => {
+        // Send this information over to SSE server which will send this info to dashboard
+        const cssSelector = this.cssPath(target, true);
+        const xPath = this.xPath(target, true);
+        //copying value to the clipboard
+        navigator.clipboard.writeText(cssSelector + "___" + xPath);
+        //creating container for indicating user to paste the code in dashboard
+        showFeedbackAfterViewIdCopy();
+        //disabling the view seletion after showing the container
+        disableViewSelectionHandler();
+        this._makeSSERequest(
+          "view",
+          location.href,
+          cssSelector + "___" + xPath
+        );
+      });
+    window.addEventListener("click", this.clickListener, true);
 
-    /**
-     * Hides this button, Shows the Disable View Selection button and attach some event listeners
-     *
-     * At last, show a toast kind of message at the center of the screen
-     */
-    enableViewSelectionButton.onclick = () => {
-      this.isSelectionMode = true;
+    this._hideToast(false);
 
-      // Attach the mouseover and mouseout listeners
-      window.addEventListener("mouseover", onMouseOver, true);
-      window.addEventListener("mouseout", onMouseOut, true);
-      this.clickListener = (e) =>
-        handleDocumentOnClick(e, (target) => {
-          // Send this information over to SSE server which will send this info to dashboard
-          const cssSelector = this.cssPath(target, true);
-          const xPath = this.xPath(target, true);
-          //copying value to the clipboard
-          navigator.clipboard.writeText(cssSelector + "___" + xPath);
-          //creating container for indicating user to paste the code in dashboard
-          showFeedbackAfterViewIdCopy();
-          //disabling the view seletion after showing the container
-          disableViewSelectionHandler();
-          this._makeSSERequest(
-            "view",
-            location.href,
-            cssSelector + "___" + xPath
-          );
-        });
-      window.addEventListener("click", this.clickListener, true);
+    enableViewSelectionButton.style.display = "none";
+    disableViewSelectionButton.style.display = "block";
+  };
 
-      this._hideToast(false);
+  const showFeedbackAfterViewIdCopy = () => {
+    const enableViewSelectionBtn = document.querySelector("#apx-ev");
+    enableViewSelectionBtn.disabled = true;
 
-      enableViewSelectionButton.style.display = "none";
-      disableViewSelectionButton.style.display = "block";
-    };
+    let message =
+      "ID Copied! Now go back to apxor dashboard and paste <br> the element ID";
 
-    const showFeedbackAfterViewIdCopy = () => {
-      const enableViewSelectionBtn = document.querySelector("#apx-ev");
-      enableViewSelectionBtn.disabled = true;
-
-      let message =
-        "ID Copied! Now go back to apxor dashboard and paste <br> the element ID";
-
-      let uiElementPasteSVG = `
+    let uiElementPasteSVG = `
         <svg width="447" height="144" viewBox="0 0 447 144" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect width="447" height="144" fill="white"/>
           <path d="M24.84 35V26.36H28.488C28.572 26.36 28.684 26.364 28.824 26.372C28.968 26.376 29.096 26.388 29.208 26.408C29.724 26.488 30.146 26.658 30.474 26.918C30.806 27.178 31.05 27.506 31.206 27.902C31.362 28.294 31.44 28.732 31.44 29.216C31.44 29.7 31.36 30.14 31.2 30.536C31.044 30.928 30.8 31.254 30.468 31.514C30.14 31.774 29.72 31.944 29.208 32.024C29.096 32.04 28.968 32.052 28.824 32.06C28.68 32.068 28.568 32.072 28.488 32.072H26.472V35H24.84ZM26.472 30.548H28.416C28.5 30.548 28.592 30.544 28.692 30.536C28.792 30.528 28.884 30.512 28.968 30.488C29.188 30.428 29.358 30.328 29.478 30.188C29.598 30.044 29.68 29.886 29.724 29.714C29.772 29.538 29.796 29.372 29.796 29.216C29.796 29.06 29.772 28.896 29.724 28.724C29.68 28.548 29.598 28.39 29.478 28.25C29.358 28.106 29.188 28.004 28.968 27.944C28.884 27.92 28.792 27.904 28.692 27.896C28.592 27.888 28.5 27.884 28.416 27.884H26.472V30.548ZM32.767 35L35.407 26.36H37.843L40.483 35H38.803L36.451 27.38H36.763L34.447 35H32.767ZM34.351 33.2V31.676H38.911V33.2H34.351ZM45.9081 35.18C45.2681 35.18 44.6901 35.068 44.1741 34.844C43.6621 34.616 43.2401 34.292 42.9081 33.872C42.5801 33.448 42.3721 32.944 42.2841 32.36L43.9881 32.108C44.1081 32.604 44.3561 32.986 44.7321 33.254C45.1081 33.522 45.5361 33.656 46.0161 33.656C46.2841 33.656 46.5441 33.614 46.7961 33.53C47.0481 33.446 47.2541 33.322 47.4141 33.158C47.5781 32.994 47.6601 32.792 47.6601 32.552C47.6601 32.464 47.6461 32.38 47.6181 32.3C47.5941 32.216 47.5521 32.138 47.4921 32.066C47.4321 31.994 47.3461 31.926 47.2341 31.862C47.1261 31.798 46.9881 31.74 46.8201 31.688L44.5761 31.028C44.4081 30.98 44.2121 30.912 43.9881 30.824C43.7681 30.736 43.5541 30.61 43.3461 30.446C43.1381 30.282 42.9641 30.066 42.8241 29.798C42.6881 29.526 42.6201 29.184 42.6201 28.772C42.6201 28.192 42.7661 27.71 43.0581 27.326C43.3501 26.942 43.7401 26.656 44.2281 26.468C44.7161 26.28 45.2561 26.188 45.8481 26.192C46.4441 26.2 46.9761 26.302 47.4441 26.498C47.9121 26.694 48.3041 26.98 48.6201 27.356C48.9361 27.728 49.1641 28.184 49.3041 28.724L47.5401 29.024C47.4761 28.744 47.3581 28.508 47.1861 28.316C47.0141 28.124 46.8081 27.978 46.5681 27.878C46.3321 27.778 46.0841 27.724 45.8241 27.716C45.5681 27.708 45.3261 27.744 45.0981 27.824C44.8741 27.9 44.6901 28.012 44.5461 28.16C44.4061 28.308 44.3361 28.484 44.3361 28.688C44.3361 28.876 44.3941 29.03 44.5101 29.15C44.6261 29.266 44.7721 29.36 44.9481 29.432C45.1241 29.504 45.3041 29.564 45.4881 29.612L46.9881 30.02C47.2121 30.08 47.4601 30.16 47.7321 30.26C48.0041 30.356 48.2641 30.492 48.5121 30.668C48.7641 30.84 48.9701 31.068 49.1301 31.352C49.2941 31.636 49.3761 31.996 49.3761 32.432C49.3761 32.896 49.2781 33.302 49.0821 33.65C48.8901 33.994 48.6301 34.28 48.3021 34.508C47.9741 34.732 47.6021 34.9 47.1861 35.012C46.7741 35.124 46.3481 35.18 45.9081 35.18ZM54.0188 35V27.884H51.2948V26.36H58.3748V27.884H55.6508V35H54.0188ZM60.6591 35V26.36H66.2991V27.884H62.2911V29.732H65.5791V31.256H62.2911V33.476H66.2991V35H60.6591ZM76.2955 35.18C75.5995 35.18 74.9875 35.04 74.4595 34.76C73.9315 34.476 73.5195 34.078 73.2235 33.566C72.9275 33.054 72.7795 32.452 72.7795 31.76V26.372L74.4355 26.36V31.748C74.4355 32.032 74.4835 32.29 74.5795 32.522C74.6755 32.754 74.8075 32.954 74.9755 33.122C75.1475 33.29 75.3455 33.42 75.5695 33.512C75.7975 33.6 76.0395 33.644 76.2955 33.644C76.5595 33.644 76.8035 33.598 77.0275 33.506C77.2555 33.414 77.4535 33.284 77.6215 33.116C77.7895 32.948 77.9195 32.748 78.0115 32.516C78.1075 32.284 78.1555 32.028 78.1555 31.748V26.36H79.8115V31.76C79.8115 32.452 79.6635 33.054 79.3675 33.566C79.0715 34.078 78.6595 34.476 78.1315 34.76C77.6035 35.04 76.9915 35.18 76.2955 35.18ZM82.9266 35V26.36H84.5586V35H82.9266ZM91.3997 35V26.36H97.0397V27.884H93.0317V29.732H96.3197V31.256H93.0317V33.476H97.0397V35H91.3997ZM99.9178 35V26.36H101.55V33.476H105.27V35H99.9178ZM107.61 35V26.36H113.25V27.884H109.242V29.732H112.53V31.256H109.242V33.476H113.25V35H107.61ZM116.008 35V26.36H117.472L120.328 32.096L123.184 26.36H124.648V35H123.124V29.84L120.616 35H120.04L117.532 29.84V35H116.008ZM127.652 35V26.36H133.292V27.884H129.284V29.732H132.572V31.256H129.284V33.476H133.292V35H127.652ZM136.05 35V26.36H137.706L141.462 32.12V26.36H143.118V35H141.462L137.706 29.24V35H136.05ZM148.117 35V27.884H145.393V26.36H152.473V27.884H149.749V35H148.117ZM158.236 35V26.36H159.868V35H158.236ZM162.987 35V26.36H165.783C165.851 26.36 165.991 26.362 166.203 26.366C166.415 26.37 166.619 26.384 166.815 26.408C167.511 26.492 168.101 26.734 168.585 27.134C169.069 27.534 169.437 28.042 169.689 28.658C169.941 29.274 170.067 29.948 170.067 30.68C170.067 31.412 169.941 32.086 169.689 32.702C169.437 33.318 169.069 33.826 168.585 34.226C168.101 34.626 167.511 34.868 166.815 34.952C166.619 34.976 166.415 34.99 166.203 34.994C165.991 34.998 165.851 35 165.783 35H162.987ZM164.643 33.464H165.783C165.891 33.464 166.037 33.462 166.221 33.458C166.405 33.45 166.571 33.432 166.719 33.404C167.095 33.328 167.401 33.152 167.637 32.876C167.877 32.6 168.053 32.268 168.165 31.88C168.281 31.492 168.339 31.092 168.339 30.68C168.339 30.248 168.279 29.838 168.159 29.45C168.043 29.062 167.865 28.734 167.625 28.466C167.385 28.198 167.083 28.028 166.719 27.956C166.571 27.924 166.405 27.906 166.221 27.902C166.037 27.898 165.891 27.896 165.783 27.896H164.643V33.464Z" fill="#FF7F33"/>
@@ -639,12 +638,12 @@ function _createDraggableWYSIWYGOverlay = (rtmInstance) => {
         </svg>
       `;
 
-      if (this._type !== "Desktop") {
-        message =
-          "Element selected! Now go back to the apxor dashboard to proceed";
-        uiElementPasteSVG = "";
-      }
-      const feedbackModal = `
+    if (this._type !== "Desktop") {
+      message =
+        "Element selected! Now go back to the apxor dashboard to proceed";
+      uiElementPasteSVG = "";
+    }
+    const feedbackModal = `
         <style> 
           .apx-container{
             padding:20px;
@@ -660,8 +659,8 @@ function _createDraggableWYSIWYGOverlay = (rtmInstance) => {
               ${uiElementPasteSVG}
         </div>
       `;
-      const feedbackParentDiv = document.createElement("div");
-      feedbackParentDiv.style = `
+    const feedbackParentDiv = document.createElement("div");
+    feedbackParentDiv.style = `
         z-index:99999999;
         background:#002845;
         position:fixed;
@@ -669,72 +668,81 @@ function _createDraggableWYSIWYGOverlay = (rtmInstance) => {
         left:50%;
         transform:translate(-50%, -50%);
       `;
-      feedbackParentDiv.innerHTML = feedbackModal;
-      document.body.appendChild(feedbackParentDiv);
-      const closeButton = document.getElementById("close-button");
-      closeButton.addEventListener("click", () => {
-        const conatiner = document.getElementById("apx-container");
-        conatiner.remove();
-        enableViewSelectionBtn.disabled = false;
-      });
-    };
-    /**
-     * Hides this button, Shows the Enable View Selection button and remove all attached event listeners
-     *
-     * At last, show a toast kind of message at the center of the screen
-     */
-    const disableViewSelectionHandler = () => {
-      this._hideSelectionMode();
-
-      disableViewSelectionButton.style.display = "none";
-      enableViewSelectionButton.style.display = "block";
-    };
-
-    disableViewSelectionButton.onclick = disableViewSelectionHandler;
-
-    // Listen on these custom external events to control the show/hide behaviour of the buttons reside in this div
-    this._wysiwygRoot.addEventListener("preview", disableViewSelectionHandler);
-    this._wysiwygRoot.addEventListener("added", () => {
-      addDeviceButton.style.display = "none";
-      removeDeviceButton.style.display = "block";
-      buttons.style.display = "flex";
-      enableViewSelectionButton.style.display = "block";
+    feedbackParentDiv.innerHTML = feedbackModal;
+    document.body.appendChild(feedbackParentDiv);
+    const closeButton = document.getElementById("close-button");
+    closeButton.addEventListener("click", () => {
+      const conatiner = document.getElementById("apx-container");
+      conatiner.remove();
+      enableViewSelectionBtn.disabled = false;
     });
+  };
+  /**
+   * Hides this button, Shows the Enable View Selection button and remove all attached event listeners
+   *
+   * At last, show a toast kind of message at the center of the screen
+   */
+  const disableViewSelectionHandler = () => {
+    this._hideSelectionMode();
 
-    dragElement(node);
+    disableViewSelectionButton.style.display = "none";
+    enableViewSelectionButton.style.display = "block";
   };
 
-  function _hideSelectionMode = (hideHTML = OFF_HTML) => {
-    if (!this.isSelectionMode) {
-      return;
-    }
-    // Remove the mouseover and mouseout listeners
-    window.removeEventListener("mouseover", onMouseOver, true);
-    window.removeEventListener("mouseout", onMouseOut, true);
-    window.removeEventListener("click", this.clickListener, true);
+  disableViewSelectionButton.onclick = disableViewSelectionHandler;
 
-    const nodes = document.querySelectorAll(".apx-highlight");
-    for (let index = 0; index < nodes.length; index++) {
-      const node = nodes[index];
-      node.classList.remove("apx-highlight");
-    }
+  // Listen on these custom external events to control the show/hide behaviour of the buttons reside in this div
+  this._wysiwygRoot.addEventListener("preview", disableViewSelectionHandler);
+  this._wysiwygRoot.addEventListener("added", () => {
+    addDeviceButton.style.display = "none";
+    removeDeviceButton.style.display = "block";
+    buttons.style.display = "flex";
+    enableViewSelectionButton.style.display = "block";
+  });
 
-    this._hideToast(true, hideHTML);
+  dragElement(node);
+};
 
-    this.isSelectionMode = false;
-  };
+const _hideSelectionMode = (hideHTML = OFF_HTML) => {
+  if (!this.isSelectionMode) {
+    return;
+  }
+  // Remove the mouseover and mouseout listeners
+  window.removeEventListener("mouseover", onMouseOver, true);
+  window.removeEventListener("mouseout", onMouseOut, true);
+  window.removeEventListener("click", this.clickListener, true);
 
-  function _hideToast = (hide = false, hideHTML = OFF_HTML) => {
-    this._viewPickerNode.style.visibility = "visible";
-    if (hide) {
-      this._viewPickerNode.innerHTML = hideHTML;
-      this._viewPickerNode.style.opacity = 1;
-    } else {
-      this._viewPickerNode.innerHTML = ON_HTML;
-      this._viewPickerNode.style.opacity = 1;
-    }
-    setTimeout(() => {
-      this._viewPickerNode.style.opacity = 0;
-      this._viewPickerNode.style.visibility = "hidden";
-    }, 1000);
-  };
+  const nodes = document.querySelectorAll(".apx-highlight");
+  for (let index = 0; index < nodes.length; index++) {
+    const node = nodes[index];
+    node.classList.remove("apx-highlight");
+  }
+
+  this._hideToast(true, hideHTML);
+
+  this.isSelectionMode = false;
+};
+
+const _hideToast = (hide = false, hideHTML = OFF_HTML) => {
+  this._viewPickerNode.style.visibility = "visible";
+  if (hide) {
+    this._viewPickerNode.innerHTML = hideHTML;
+    this._viewPickerNode.style.opacity = 1;
+  } else {
+    this._viewPickerNode.innerHTML = ON_HTML;
+    this._viewPickerNode.style.opacity = 1;
+  }
+  setTimeout(() => {
+    this._viewPickerNode.style.opacity = 0;
+    this._viewPickerNode.style.visibility = "hidden";
+  }, 1000);
+};
+
+
+chrome.runtime.onMessage.addListener(function(request,sender,sendResponse){
+  if(request.command === "open"){
+    _createDraggableWYSIWYGOverlay();
+  }else{
+//
+  }
+});
