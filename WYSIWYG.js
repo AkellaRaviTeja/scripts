@@ -1,19 +1,19 @@
-import { createDialog, getCookie, uuid, getDevice } from "./utils";
+const APX_OVERLAY = "apx-oly";
+const APX_DIALOG_CONTENT = "apx-dlg-c";
+const APX_PREVIEW_CAMPAIGN_NAME = "APX-PR3VI3W-CAMPGAIN";
 
-
-import { APX_PREVIEW_CAMPAIGN_NAME } from "./constants";
 
 const ON_HTML = "<b>View Selection Mode: ON";
 const OFF_HTML = "<b>View Selection Mode: OFF</b>";
 
 const SSE_API = "https://server.apxor.com/v1/sse/";
-const LAYOUT_URL = SSE_API + "layout?appId=<aid>&deviceId=<uid>";
+const LAYOUT_URL = SSE_API + "layout?appId=b0bf1fc7-b104-4e92-9cc5-590fcb685c29&deviceId=<uid>";
 const PREVIEW_API = SSE_API + "ui-config?appId=<aid>&deviceId=<uid>";
 const CONFIG_API = SSE_API + "art-config?appId=<aid>&deviceId=<uid>";
 
 const FRONTEND_API = "https://server.apxor.com/v4/frontendapi/web/test-devices";
-const ADD_TEST_DEVICE_API = FRONTEND_API + "?appId=<aid>";
-const REMOVE_TEST_DEVICE_API = FRONTEND_API + "/<uid>?appId=<aid>";
+const ADD_TEST_DEVICE_API = FRONTEND_API + "?appId=b0bf1fc7-b104-4e92-9cc5-590fcb685c29";
+const REMOVE_TEST_DEVICE_API = FRONTEND_API + "/<uid>?appId=b0bf1fc7-b104-4e92-9cc5-590fcb685c29";
 
 const createDialog = (
   width,
