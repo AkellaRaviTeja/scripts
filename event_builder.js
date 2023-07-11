@@ -737,3 +737,16 @@ const _hideToast = (hide = false, hideHTML = OFF_HTML) => {
     this._viewPickerNode.style.visibility = "hidden";
   }, 1000);
 };
+
+//message listener for background
+  chrome.runtime.onMessage.addListener(function (
+    request,
+    sender,
+    sendResponse
+  ) {
+    console.log("Received amessage");
+    if (request.command === "open") {
+      _createDraggableWYSIWYGOverlay();
+    }
+    sendResponse({ result: "close" });
+  });
