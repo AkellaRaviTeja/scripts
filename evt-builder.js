@@ -1,3 +1,4 @@
+let testDeviceData;
 const onMouseOver = (e) => {
   if (e.target) {
     const { classList } = e.target;
@@ -371,14 +372,264 @@ const _xPathIndex = (node) => {
   }
   return -1; // An error occurred: |node| not found in parent's children.
 };
+const _showAddTestDeviceDialog = (rtmInstance) => {
+  const dialog = createDialog(500, 20, {});
+  const dialogContent = dialog.children[0];
+  dialogContent.style.flex = "0 1 auto";
+  dialogContent.style.maxHeight = "calc(100% - 96px)";
+  dialogContent.style.display = "flex";
+  dialogContent.style.flexDirection = "column";
 
+  const deviceInfo = Apxor.getController().getDevInfo();
+  const { apx_browser } = Apxor.getController().getUserAttributes();
+  const { hardware_model, os_version, id } = deviceInfo;
+
+  const styles = `<style>
+      .apx-loading{
+        background:#333 url('https://code.jquery.com/mobile/1.3.1/images/ajax-loader.gif') no-repeat 50% 50%;
+        -webkit-transition:background-color 0;transition:background-color 0;opacity: 1;
+        -webkit-transition:opacity 1;transition:opacity 1
+      }
+      .apx-t{
+        flex:0 0 auto;
+        margin:0;
+        padding:24px 24px 20px
+      }
+      .apx-tt{
+        color:rgba(0,72,114,0.87);
+        font-size:1.3125rem;
+        font-weight:500;
+        font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+        line-height: 1.16667em;
+        margin:0
+      }
+      .apx-c{
+        flex:1 1 auto;padding:0 24px 24px;overflow-y: auto
+      }
+      .apx-de{
+        line-height:1.5;color:rgba(0,72,114,0.54);font-size:1rem;font-weight:400;
+        font-family:"Roboto", "Helvetica", "Arial", sans-serif;margin:0;display:block
+      }
+      .apx-id{
+        width:100%;margin-top:8px;margin-bottom:4px;margin:0;border:0;flex-direction:column;
+        display:inline-flex;padding:0;position:relative;min-width:0;vertical-align:top
+      }
+      .apx-il{
+        transition:color 200ms cubic-bezier(0.0, 0, 0.2, 1) 0ms,transform 200ms cubic-bezier(0.0, 0, 0.2, 1) 0ms;
+        transform:translate(0, 21px) scale(1);top:0;left:0;position:absolute;
+        color:rgba(0,72,114, 0.54);padding: 0;font-size: 1rem;transform-origin:top left;
+        font-family: "Roboto", "Helvetica", "Arial", sans-serif;line-height: 1
+      }
+      .apx-il-f{
+        transform:translate(0, 1.5px) scale(0.75)
+      }
+      label + .apx-iid {
+        margin-top:16px;position:relative;width: 100%;color: rgba(0,72,114, 0.87);
+        cursor: text;display: inline-flex;font-size: 1rem;
+        font-family:"Roboto", "Helvetica", "Arial", sans-serif;
+        line-height: 1.1875em;align-items: center
+      }
+      .apx-iid.apx-iid-f:after{
+        transform:scaleX(1)
+      }
+      .apx-iid:hover:before{
+        border-bottom: 2px solid rgba(0,72,114, 0.87)
+      }
+      .apx-iid:before{
+        left: 0;right: 0;bottom: 0;content: '\\00a0';position: absolute;
+        transition: border-bottom-color 200ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.42);pointer-events: none
+      }
+      .apx-iid:after{
+        left: 0;right: 0;bottom: 0;content: "";position: absolute;transform: scaleX(0);
+        transition: transform 200ms cubic-bezier(0.0, 0, 0.2, 1) 0ms;
+        border-bottom: 2px solid rgb(44, 56, 126);pointer-events: none
+      }
+      .apx-ii{
+        padding-top:3px;font: inherit;color: currentColor;width: 100%;border: 0;margin: 0;
+        display: block;min-width: 0;box-sizing: content-box;background: none;padding: 6px 0 7px;outline:0
+      }
+      .apx-ul{
+        padding-top:8px;padding-bottom:8px;margin:0;padding:0;position:relative;list-style:none
+      }
+      .apx-li{
+        padding-left:16px;padding-right:16px;width:100%;display:flex;list-style:none;
+        position:relative;box-sizing:border-box;text-align:left;align-items:center;
+        padding-top:11px;padding-bottom:11px;justify-content:flex-start;text-decoration:none
+      }
+      .apx-lid:first-child{
+        padding-left:0
+      }
+      .apx-lid{
+        flex:1 1 auto;padding:0 16px;min-width:0
+      }
+      .apx-lids{
+        color:rgba(0,72,114, 0.87);font-weight:400;line-height:1.5em;
+        font-family:"Roboto", "Helvetica", "Arial", sans-seriffont-size:1rem
+      }
+      .apx-a{
+        flex:0 0 auto;margin:8px 4px;display:flex;align-items:center;justify-content:flex-end
+      }
+      .apx-b{
+        font-size:0.875rem;min-width:64px;box-sizing:border-box;min-height:36px;border:0;
+        transition:background-color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,border 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+        line-height:1.3125;font-weight:500;font-family:"Roboto", "Helvetica", "Arial", sans-serif;
+        border-radius:4px;text-transform:uppercase;cursor:pointer;display:inline-flex;outline:none;
+        position:relative;align-items:center;user-select:none;vertical-align:middle;
+        justify-content:center;text-decoration:none;background-color:transparent
+      }
+      .apx-bl{
+        width: 100%;display:inherit;align-items:inherit;justify-content:inherit
+      }
+      .apx-btr{
+        top:0;left:0;width:100%;height:100%;display:block;z-index:0;position:absolute;
+        overflow:hidden;border-radius:inherit;pointer-events:none
+      }
+    </style>
+  `;
+
+  const html = `
+      ${styles}
+      <div>
+        <div class="apx-t"><h2 class="apx-tt">Set device nick name</h2></div>
+        <div class="apx-c">
+          <p class="apx-de">Give this device a nick name for easy identification</p>
+          <div class="apx-id">
+            <label class="apx-il">Nick name</label>
+            <div class="apx-iid">
+              <input class="apx-ii" type="text" id="apx-ii" value="">
+            </div>
+          </div>
+          <ul class="apx-ul">
+            <li class="apx-li">
+              <div class="apx-lid">
+                <span class="apx-lids">
+                  <span>Model <strong style="float:right">${hardware_model} - ${os_version}</strong></span>
+                </span>
+              </div>
+            </li>
+            <li class="apx-li">
+              <div class="apx-lid">
+                <span class="apx-lids">
+                  <span>Browser <strong style="float:right">${apx_browser}</strong></span>
+                </span>
+              </div>
+            </li>
+            <li class="apx-li">
+              <div class="apx-lid">
+                <span class="apx-lids">
+                  <span>Device ID <strong style="float:right">${id}</strong></span>
+                </span>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="apx-a">
+        <button id="apx-bc" class="apx-b"><span class="apx-bl" style="color:#295e8c6b">Cancel</span><span class="apx-btr"/></button>
+        <button id="apx-bd" class="apx-b"><span class="apx-bl" style="color:#295e8c">Done</span><span class="apx-btr"/></button>
+        </div>
+      </div>
+  `;
+
+  dialog.style.visibility = "hidden";
+  dialogContent.style.visibility = "hidden";
+  dialogContent.innerHTML = html;
+
+  const input = document.getElementById("apx-ii");
+  if (testDeviceData) {
+    input.value = testDeviceData?.name ?? "";
+  }
+
+  input.onfocus = () => {
+    input.parentNode.classList.add("apx-iid-f");
+    input.parentNode.parentNode.children[0].classList.add("apx-il-f");
+  };
+  input.onblur = () => {
+    input.parentNode.classList.remove("apx-iid-f");
+    input.parentNode.parentNode.children[0].classList.remove("apx-il-f");
+  };
+  input.oninput = () => {
+    if (input.value.trim() !== "") {
+      done.removeAttribute("disabled");
+    } else {
+      done.setAttribute("disabled", "");
+    }
+  };
+
+  // Show the dialog with some timeout to animate the dialog
+  setTimeout(() => {
+    dialog.style.visibility = "visible";
+    dialogContent.style.visibility = "visible";
+
+    dialogContent.classList.toggle("open");
+
+    input.parentNode.parentNode.children[0].classList.add("apx-il-f");
+  }, 100);
+
+  const hideDialog = () => {
+    dialogContent.classList.toggle("open");
+    setTimeout(() => {
+      dialog.parentNode.removeChild(dialog);
+    }, 400);
+  };
+
+  const cancel = document.getElementById("apx-bc");
+  cancel.onclick = () => {
+    hideDialog();
+  };
+
+  const done = document.getElementById("apx-bd");
+  done.onclick = () => {
+    // Make Add Test Device network request
+    dialogContent.children[1].classList.add("apx-loading");
+    Apxor.getController().makePostRequest(
+      ADD_TEST_DEVICE_API.replace("<aid>", Apxor.getSiteId()),
+      {
+        model: hardware_model,
+        id,
+        nick_name: input.value,
+      },
+      {
+        apx_web_key: "WTCKFAIVAJKYJA3HCV80WIKZU98R9NJG",
+      },
+      () => {
+        const newInfo = { id, name: input.value };
+        Apxor.getController().persistToStorage("_apx_td", newInfo, true);
+
+        testDeviceData = newInfo;
+
+        this._makeSSERequest("select", `${input.value} - ${id}`, id, () => {
+          dialogContent.children[1].classList.remove("apx-loading");
+          this._wysiwygRoot.dispatchEvent(new CustomEvent("added"));
+        });
+
+        const previewEventSource = new EventSource(
+          PREVIEW_API.replace("<aid>", Apxor.getSiteId()).replace("<uid>", id)
+        );
+        const artConfigEventSource = new EventSource(
+          CONFIG_API.replace("<aid>", Apxor.getSiteId()).replace("<uid>", id)
+        );
+        previewEventSource.onmessage = artConfigEventSource.onmessage = (
+          e
+        ) => {
+          if (e && e.data && e.data !== "{}") {
+            this._handleSSEResponse(rtmInstance, e.data);
+          }
+        };
+
+        hideDialog();
+      },
+      () => {}
+    );
+  };
+};
 const _createDraggableWYSIWYGOverlay = (rtmInstance) => {
   console.log("Created a WYSIWYG popup");
   const isAdded =
-    this.testDeviceData !== null &&
-    this.testDeviceData !== undefined &&
-    this.testDeviceData.id &&
-    this.testDeviceData.name;
+    testDeviceData !== null &&
+    testDeviceData !== undefined &&
+    testDeviceData.id &&
+    testDeviceData.name;
 
   const html = `
         <style>
@@ -545,7 +796,7 @@ const _createDraggableWYSIWYGOverlay = (rtmInstance) => {
     fetch(
       REMOVE_TEST_DEVICE_API.replace("<aid>", Apxor.getSiteId()).replace(
         "<uid>",
-        this.testDeviceData.id
+        testDeviceData.id
       ),
       {
         method: "DELETE",
@@ -563,7 +814,7 @@ const _createDraggableWYSIWYGOverlay = (rtmInstance) => {
       .then((data) => {
         if (data) {
           Apxor.getController().persistToStorage("_apx_td", {}, true);
-          this.testDeviceData = null;
+          testDeviceData = null;
 
           addDeviceButton.style.display = "block";
           removeDeviceButton.style.display =
@@ -738,4 +989,10 @@ const _hideToast = (hide = false, hideHTML = OFF_HTML) => {
   }, 1000);
 };
 
-_createDraggableWYSIWYGOverlay();
+window.setTimeout(()=>{
+  testDeviceData = Apxor.getController().getFromStorage(
+    "_apx_td",
+    true
+  );
+  _createDraggableWYSIWYGOverlay();
+},1000)
