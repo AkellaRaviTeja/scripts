@@ -988,7 +988,73 @@ const _hideToast = (hide = false, hideHTML = OFF_HTML) => {
     _viewPickerNode.style.visibility = "hidden";
   }, 1000);
 };
+const createDialog = (
+  width,
+  min_height,
+  {
+    dim_background = true,
+    dim_bg_color = "#000000",
+    dim_bg_opacity = 0.87,
+    position,
+  }
+) => {
+  const dialogRoot = document.createElement("div");
+  dialogRoot.setAttribute("id", APX_OVERLAY);
+  const styleNode = document.createElement("style");
+  let justifyContent = "center";
+  let alignItems = "center";
+  switch (position) {
+    case "bottom-left":
+      justifyContent = "flex-start";
+      alignItems = "flex-end";
+      break;
+    case "bottom-right":
+      justifyContent = "flex-end";
+      alignItems = "flex-end";
+      break;
+    case "top-left":
+      justifyContent = "flex-start";
+      alignItems = "flex-start";
+      break;
+    case "top-right":
+      justifyContent = "flex-end";
+      alignItems = "flex-start";
+      break;
+    default:
+      break;
+  }
 
+  let bg_color = "none";
+  if (dim_background) {
+    const rgb = hexToRgb(dim_bg_color);
+    bg_color = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b}, ${dim_bg_opacity})`;
+  }
+
+  styleNode.innerHTML = `
+#apx-oly {
+  width:100%;height:100%;position:fixed;top:0;left:0;background-color:${bg_color};
+  display:flex;justify-content:${justifyContent};align-items:${alignItems};border-radius:3px;z-index:2147483647
+}
+#apx-oly > * {font-family: inherit;box-sizing:unset}
+.apx-dlg-c {
+  width:${width}px;min-height:${min_height}%;background:white;z-index:99999999;opacity:0;position:relative;visibility:hidden;
+  transition:all 500ms cubic-bezier(0, -0.37, 0, 2.06);top:-15px;border-radius:3px;margin:20px
+}
+.apx-dlg-c.open {opacity:1;visibility:visible;top:0}
+  `
+    .replaceAll("\n", "")
+    .replace(/[\s]{2,999}/g, "");
+
+  const dialogContent = document.createElement("div");
+  dialogContent.setAttribute("id", APX_DIALOG_CONTENT);
+  dialogContent.classList.add(APX_DIALOG_CONTENT);
+
+  dialogRoot.appendChild(dialogContent);
+  dialogRoot.appendChild(styleNode);
+
+  document.body.appendChild(dialogRoot);
+  return dialogRoot;
+};
 window.setTimeout(()=>{
   testDeviceData = Apxor.getController().getFromStorage(
     "_apx_td",
