@@ -738,7 +738,7 @@ const _hideToast = (hide = false, hideHTML = OFF_HTML) => {
   }, 1000);
 };
 
-//message listener for background
+
   chrome.runtime.onMessage.addListener(function (
     request,
     sender,
