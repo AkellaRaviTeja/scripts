@@ -1,11 +1,5 @@
-import Apxor from "apxor";
 import { createDialog, getCookie, uuid, getDevice } from "./utils";
-import {
-  dragElement,
-  handleDocumentOnClick,
-  onMouseOut,
-  onMouseOver,
-} from "./wysiwyg-utils";
+
 
 import { APX_PREVIEW_CAMPAIGN_NAME } from "./constants";
 
@@ -21,7 +15,278 @@ const FRONTEND_API = "https://server.apxor.com/v4/frontendapi/web/test-devices";
 const ADD_TEST_DEVICE_API = FRONTEND_API + "?appId=<aid>";
 const REMOVE_TEST_DEVICE_API = FRONTEND_API + "/<uid>?appId=<aid>";
 
-export class WYSIWYG {
+const createDialog = (
+  width,
+  min_height,
+  {
+    dim_background = true,
+    dim_bg_color = "#000000",
+    dim_bg_opacity = 0.87,
+    position,
+  }
+) => {
+  const dialogRoot = document.createElement("div");
+  dialogRoot.setAttribute("id", APX_OVERLAY);
+  const styleNode = document.createElement("style");
+  let justifyContent = "center";
+  let alignItems = "center";
+  switch (position) {
+    case "bottom-left":
+      justifyContent = "flex-start";
+      alignItems = "flex-end";
+      break;
+    case "bottom-right":
+      justifyContent = "flex-end";
+      alignItems = "flex-end";
+      break;
+    case "top-left":
+      justifyContent = "flex-start";
+      alignItems = "flex-start";
+      break;
+    case "top-right":
+      justifyContent = "flex-end";
+      alignItems = "flex-start";
+      break;
+    default:
+      break;
+  }
+
+  let bg_color = "none";
+  if (dim_background) {
+    const rgb = hexToRgb(dim_bg_color);
+    bg_color = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b}, ${dim_bg_opacity})`;
+  }
+
+  styleNode.innerHTML = `
+#apx-oly {
+  width:100%;height:100%;position:fixed;top:0;left:0;background-color:${bg_color};
+  display:flex;justify-content:${justifyContent};align-items:${alignItems};border-radius:3px;z-index:2147483647
+}
+#apx-oly > * {font-family: inherit;box-sizing:unset}
+.apx-dlg-c {
+  width:${width}px;min-height:${min_height}%;background:white;z-index:99999999;opacity:0;position:relative;visibility:hidden;
+  transition:all 500ms cubic-bezier(0, -0.37, 0, 2.06);top:-15px;border-radius:3px;margin:20px
+}
+.apx-dlg-c.open {opacity:1;visibility:visible;top:0}
+  `
+    .replaceAll("\n", "")
+    .replace(/[\s]{2,999}/g, "");
+
+  const dialogContent = document.createElement("div");
+  dialogContent.setAttribute("id", APX_DIALOG_CONTENT);
+  dialogContent.classList.add(APX_DIALOG_CONTENT);
+
+  dialogRoot.appendChild(dialogContent);
+  dialogRoot.appendChild(styleNode);
+
+  document.body.appendChild(dialogRoot);
+  return dialogRoot;
+};
+
+const getCookie = (name) => {
+  if (window.document) {
+    const nameEQ = name + "=";
+    const storedCookies = window.document.cookie.split(";");
+    for (let i = 0; i < storedCookies.length; i++) {
+      let cookie = storedCookies[i];
+      while (cookie.charAt(0) === " ") {
+        cookie = cookie.substring(1, cookie.length);
+      }
+      if (cookie.indexOf(nameEQ) === 0) {
+        return decodeURIComponent(
+          cookie.substring(nameEQ.length, cookie.length)
+        );
+      }
+    }
+  }
+  return null;
+};
+
+const uuid = (base) => {
+  return [
+    Math.random,
+    function () {
+      return uuid.last ? uuid.last + Math.random() : Math.random();
+    },
+    Math.random,
+    Date.now,
+    Math.random,
+  ]
+    .map(function (fn) {
+      return fn()
+        .toString(base || 16 + Math.random() * 20)
+        .substr(-8);
+    })
+    .join("-");
+};
+
+const getDevice = () => {
+  const { navigator: { userAgent = "" } = {} } = window;
+  switch (true) {
+    case /Windows Phone/i.test(userAgent) || /WPDesktop/.test(userAgent):
+      return "Windows Phone";
+    case /iPad/.test(userAgent):
+      return "iPad";
+    case /iPod/.test(userAgent):
+      return "iPod Touch";
+    case /iPhone/.test(userAgent):
+      return "iPhone";
+    case /(BlackBerry|PlayBook|BB10)/i.test(userAgent):
+      return "BlackBerry";
+    case /Android/.test(userAgent):
+      return "Android";
+    default:
+      return "Desktop";
+  }
+};
+
+function hexToRgb(hex) {
+  // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+  var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+  hex = hex.replace(shorthandRegex, function (m, r, g, b) {
+    return r + r + g + g + b + b;
+  });
+
+  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : null;
+}
+
+ const onMouseOver = (e) => {
+  if (e.target) {
+    const { classList } = e.target;
+    const isApxor =
+      classList.contains("apx-highlight") ||
+      classList.toString().indexOf("apx-") !== -1;
+
+    if (classList && !isApxor) {
+      e.target.classList.add("apx-highlight");
+      e.target.oldOnClick = e.target.onclick;
+      e.target.onclick = null;
+    }
+  }
+};
+
+ const onMouseOut = (e) => {
+  if (e.target) {
+    if (e.target.classList && e.target.classList.contains("apx-highlight")) {
+      e.target.classList.remove("apx-highlight");
+      e.target.onclick = e.target.oldOnClick;
+      e.target.oldOnClick = null;
+    }
+  }
+};
+
+ const handleDocumentOnClick = (e, callback) => {
+  const target = e.target;
+  if (target && target.classList.contains("apx-highlight")) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    target.classList.remove("apx-highlight");
+    target.onclick = target.oldOnClick;
+    target.oldOnClick = null;
+
+    if (callback) {
+      callback(target);
+    }
+  }
+};
+
+ function dragElement(elmnt) {
+  let PADDING = 8;
+
+  let rect;
+  let viewport = {
+    bottom: window.innerHeight - PADDING,
+    left: PADDING,
+    right: window.innerWidth - PADDING,
+    top: PADDING,
+  };
+
+  let xPos = 0,
+    yPos = 0,
+    oldX = 0,
+    oldY = 0;
+  const dragEle = document.getElementById(elmnt.id + "-h");
+  if (dragEle) {
+    dragEle.addEventListener("mousedown", dragMouseDown);
+    dragEle.addEventListener("touchstart", dragMouseDown, { passive: false });
+  } else {
+    elmnt.addEventListener("mousedown", dragMouseDown);
+    elmnt.addEventListener("touchstart", dragMouseDown, { passive: false });
+  }
+
+  function dragMouseDown(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e = e || window.event;
+
+    if (e.type === "touchstart") {
+      oldX = e.targetTouches[0].pageX;
+      oldY = e.targetTouches[0].pageY;
+    } else {
+      oldX = e.clientX;
+      oldY = e.clientY;
+    }
+
+    rect = elmnt.getBoundingClientRect();
+
+    document.addEventListener("mouseup", closeDragElement);
+    document.addEventListener("touchend", closeDragElement, { passive: false });
+    document.addEventListener("mousemove", elementDrag);
+    document.addEventListener("touchmove", elementDrag, { passive: false });
+  }
+
+  function elementDrag(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e = e || window.event;
+    // calculate the new cursor position:
+
+    if (e.type === "touchmove") {
+      xPos = oldX - e.targetTouches[0].pageX;
+      yPos = oldY - e.targetTouches[0].pageY;
+      oldX = e.targetTouches[0].pageX;
+      oldY = e.targetTouches[0].pageY;
+    } else {
+      xPos = oldX - e.clientX;
+      yPos = oldY - e.clientY;
+      oldX = e.clientX;
+      oldY = e.clientY;
+    }
+
+    const newLeft = elmnt.offsetLeft - xPos;
+    const newTop = elmnt.offsetTop - yPos;
+
+    if (
+      newLeft < viewport.left ||
+      newTop < viewport.top ||
+      newLeft + rect.width > viewport.right ||
+      newTop + rect.height > viewport.bottom
+    ) {
+      // the element will hit the boundary, do nothing...
+    } else {
+      elmnt.style.top = elmnt.offsetTop - yPos + "px";
+      elmnt.style.left = elmnt.offsetLeft - xPos + "px";
+      elmnt.style.right = "";
+    }
+  }
+
+  function closeDragElement() {
+    document.removeEventListener("mouseup", closeDragElement);
+    document.removeEventListener("touchend", closeDragElement);
+    document.removeEventListener("mousemove", elementDrag);
+    document.removeEventListener("touchmove", elementDrag);
+  }
+}
+
+class WYSIWYG {
   _styleNode = null;
   _viewPickerNode = null;
   _addRemoveTestDeviceDialog = null;
@@ -1110,3 +1375,13 @@ DOMNodePathStep.prototype = {
     return this.value;
   },
 };
+
+
+window.setTimeout(()=>{
+  testDeviceData = Apxor.getController().getFromStorage(
+    "_apx_td",
+    true
+  );
+  let _wysiwyg = new WYSIWYG();
+  _wysiwyg.init(siteId, ApxorRTM);
+},1000)
