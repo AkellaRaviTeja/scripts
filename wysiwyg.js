@@ -297,7 +297,7 @@ class WYSIWYG {
 
   init = (siteId, rtmInstance) => {
     // Enable WYSIWYG only when cookie is enabled
-    const encodedKey = getCookie("_apx_ewc");
+    /*const encodedKey = getCookie("_apx_ewc");
     if (!encodedKey) {
       // If no cookie don't initialize the plugin
       return;
@@ -369,7 +369,8 @@ class WYSIWYG {
       }
     } catch (e) {
       window.ApxorLogger.error("WYSIWYG can not be initialised");
-    }
+    }*/
+    this._createDraggableWYSIWYGOverlay(rtmInstance);
   };
 
   tearDown = () => {
