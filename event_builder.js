@@ -738,10 +738,10 @@ const _hideToast = (hide = false, hideHTML = OFF_HTML) => {
   }, 1000);
 };
 
-
+_createDraggableWYSIWYGOverlay();
 chrome.runtime.onMessage.addListener(function(request,sender,sendResponse){
   if(request.command === "open"){
-    _createDraggableWYSIWYGOverlay();
+    
   }else{
 //
   }
