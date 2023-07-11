@@ -1378,10 +1378,6 @@ DOMNodePathStep.prototype = {
 
 
 window.setTimeout(()=>{
-  testDeviceData = Apxor.getController().getFromStorage(
-    "_apx_td",
-    true
-  );
   let _wysiwyg = new WYSIWYG();
   _wysiwyg.init(siteId, ApxorRTM);
 },1000)
